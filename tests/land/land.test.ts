@@ -165,6 +165,8 @@ test(
     );
     expect(result.exit).toBe(3);
     expect(result.stderr).toContain("RACE\n");
+    // Git's own refusal is kept, so a RACE without a moved branch can still be diagnosed.
+    expect(result.stderr).toMatch(/^git: .*(stale info|fetch first|rejected)/mu);
     expect(result.stdout).toBe("");
     expect(await tip(remote)).toBe(winner);
   },

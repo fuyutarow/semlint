@@ -82,7 +82,7 @@ export async function admit(
       return ok({
         ...refused(failure === "PUSH_REJECTED" ? 1 : 3, failure),
         stdout: checked.stdout,
-        stderr: `${failure}\n${failure === "PUSH_REJECTED" ? `${pushRejectionDetails(push.stderr).join("\n")}\n` : ""}${checked.stderr}`,
+        stderr: `${failure}\n${failureDetails(failure, push)}${checked.stderr}`,
       });
     // The remote has accepted head. Local bookkeeping cannot revoke that acceptance (I-01).
     // Push uses a URL, so Git does not update the named remote's tracking ref for import.
@@ -118,6 +118,19 @@ export async function admit(
         (bookmark.isErr() ? "WARNING: push succeeded; local bookmark could not be updated\n" : ""),
     });
   });
+}
+
+/** Git's own words, so a RACE that no fetch explains can still be diagnosed. */
+function failureDetails(failure: string, push: { stdout: string; stderr: string }): string {
+  if (failure === "PUSH_REJECTED") return `${pushRejectionDetails(push.stderr).join("\n")}\n`;
+  if (failure !== "RACE") return "";
+  const lines = `${push.stdout}\n${push.stderr}`
+    .split(/\r?\n/u)
+    .filter((line) => line.trim() !== "");
+  if (lines.length === 0) return "";
+  const shown =
+    lines.length <= 20 ? lines : [...lines.slice(0, 19), `… ${lines.length - 19} lines omitted`];
+  return `${shown.map((line) => `git: ${line}`).join("\n")}\n`;
 }
 
 async function resolveUnknown(
